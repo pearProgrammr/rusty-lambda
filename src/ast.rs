@@ -1,4 +1,4 @@
-enum Term{
+pub enum Term {
     Var (String),
     Lambda {var_term: Box<Term>, function: Box<Term>},
     Apply {var_term: Box<Term>, function: Box<Term>},
@@ -16,7 +16,7 @@ enum Term{
     Assignm {var_name: String, Expr: Box<Term>},
 }
 
-enum BinMathOp{
+pub enum BinMathOp {
     Add,
     Minus,
     Multiply,
