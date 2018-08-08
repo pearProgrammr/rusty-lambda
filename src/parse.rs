@@ -5,13 +5,35 @@ use nom::types::CompleteStr;
 use std::num::ParseIntError;
 
 named!(variable<&str, Term>, do_parse!(
+    not!(tag!("if")) >>
+    not!(tag!("then")) >>
+    not!(tag!("else")) >>
+    not!(tag!("endif")) >>
+    not!(tag!("true")) >>
+    not!(tag!("false")) >>
     var_str: re_find!(r"^(?i:[a-z_][a-z0-9_]*)") >>
     (Var(var_str.to_string()))));
 
-named!(number<&str, Term>, map_res!(digit, |d| {let a: Result<Term, ParseIntError> = Ok(NumConst(u64::from_str_radix(d, 10)?)); a}));
+named!(number<&str, Term>, map_res!(
+    digit, |d| {
+        let a: Result<Term, ParseIntError> = Ok(NumConst(u64::from_str_radix(d, 10)?));
+        a
+    }));
 
 named!(boolean<&str, Term>, map_res!(alt!( tag!("true") | tag!("false")),
     |s| {let a: Result<Term, ()> = Ok(BoolConst(s == "true")); a}));
+
+named!(lambda<&str, Term>, ws!(do_parse!(
+    tag!(r"\") >>
+    var: variable >>
+    tag!(".") >>
+    term: term >>
+    ({
+        match var {
+            Var(var) => Lambda { var_name: var, expr: Box::new(term) },
+            _ => unreachable!(),
+        }
+    }))));
 
 named!(multiplicand<&str, Term>, alt!(
     do_parse!(
@@ -23,11 +45,11 @@ named!(multiplicand<&str, Term>, alt!(
         f: term >>
         tag!("endif") >>
         (IfStmt { test: Box::new(c), then_body: Box::new(t), else_body: Box::new(f) }))
-    | number | boolean));
+    | variable | number | boolean));
 
-named!(addend<&str, Term>, do_parse!(
+named!(addend<&str, Term>, ws!(do_parse!(
     first: multiplicand >>
-    rest: many0!(tuple!(one_of!("*/"), multiplicand)) >>
+    rest: many0!(ws!(tuple!(one_of!("*/"), multiplicand))) >>
     (rest.into_iter().fold(first, |acc, (op, i)| {
         let op = match op {
             '*' => Multiply,
@@ -35,11 +57,11 @@ named!(addend<&str, Term>, do_parse!(
             _ => unreachable!(),
         };
         MathOp { opr: op, t1: Box::new(acc), t2: Box::new(i) }
-    }))));
+    })))));
 
-named!(equalend<&str, Term>, do_parse!(
+named!(equalend<&str, Term>, ws!(do_parse!(
     first: addend >>
-    rest: many0!(tuple!(one_of!("+-"), addend)) >>
+    rest: many0!(ws!(tuple!(one_of!("+-"), addend))) >>
     (rest.into_iter().fold(first, |acc, (op, i)| {
         let op = match op {
             '+' => Add,
@@ -47,7 +69,7 @@ named!(equalend<&str, Term>, do_parse!(
             _ => unreachable!(),
         };
         MathOp { opr: op, t1: Box::new(acc), t2: Box::new(i) }
-    }))));
+    })))));
 
 named!(term<&str, Term>, ws!(do_parse!(
     left: equalend >>
@@ -65,7 +87,9 @@ named!(term<&str, Term>, ws!(do_parse!(
 
 #[test]
 fn test_variable() {
-    use nom::{Context::Code, Err::Error, ErrorKind::RegexpFind};
+    use nom::{
+        Context::Code, Err::Error, ErrorKind::{Not, RegexpFind},
+    };
 
     assert_eq!(
         variable("_things{}"),
@@ -79,6 +103,7 @@ fn test_variable() {
         variable("1_things::/"),
         Err(Error(Code("1_things::/", RegexpFind)))
     );
+    assert_eq!(variable("endif"), Err(Error(Code("endif", Not))));
 }
 
 #[test]
@@ -99,11 +124,31 @@ fn test_boolean() {
 }
 
 #[test]
+fn test_lambda() {
+    use nom::{Context::Code, Err::Error, ErrorKind::Alt};
+
+    assert_eq!(
+        lambda(r"\ x . x + 1;"),
+        Ok((
+            ";",
+            Lambda {
+                var_name: "x".to_string(),
+                expr: Box::new(MathOp {
+                    opr: Add,
+                    t1: Box::new(Var("x".to_string())),
+                    t2: Box::new(NumConst(1))
+                })
+            }
+        ))
+    );
+}
+
+#[test]
 fn test_term() {
     use nom::{Context::Code, Err::Error, ErrorKind::Alt};
 
     assert_eq!(
-        term("1+2-3;"),
+        term(" 1 + 2 - 3 ;"),
         Ok((
             ";",
             //     -
@@ -124,7 +169,7 @@ fn test_term() {
     );
 
     assert_eq!(
-        term("1+2*3-4;"),
+        term("1 + 2 * 3 - 4 ;"),
         //     -
         //    / \
         //   +   4
@@ -151,7 +196,7 @@ fn test_term() {
     );
 
     assert_eq!(
-        term("1+2==3-4;"),
+        term("1 + 2 == 3 - 4 ;"),
         //      ==
         //    /    \
         //   +      -
@@ -175,7 +220,7 @@ fn test_term() {
     );
 
     assert_eq!(
-        term("if 1 == 2 then false else true endif;"),
+        term("if 1 == 2 then false else true endif ;"),
         Ok((
             ";",
             IfStmt {
