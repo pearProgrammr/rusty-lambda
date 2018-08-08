@@ -13,7 +13,17 @@ named!(number<&str, Term>, map_res!(digit, |d| {let a: Result<Term, ParseIntErro
 named!(boolean<&str, Term>, map_res!(alt!( tag!("true") | tag!("false")),
     |s| {let a: Result<Term, ()> = Ok(BoolConst(s == "true")); a}));
 
-named!(multiplicand<&str, Term>, do_parse!(n: number >> (n)));
+named!(multiplicand<&str, Term>, alt!(
+    do_parse!(
+        tag!("if") >>
+        c: term >>
+        tag!("then") >>
+        t: term >>
+        tag!("else") >>
+        f: term >>
+        tag!("endif") >>
+        (IfStmt { test: Box::new(c), then_body: Box::new(t), else_body: Box::new(f) }))
+    | number | boolean));
 
 named!(addend<&str, Term>, do_parse!(
     first: multiplicand >>
@@ -27,7 +37,7 @@ named!(addend<&str, Term>, do_parse!(
         MathOp { opr: op, t1: Box::new(acc), t2: Box::new(i) }
     }))));
 
-named!(term<&str, Term>, do_parse!(
+named!(equalend<&str, Term>, do_parse!(
     first: addend >>
     rest: many0!(tuple!(one_of!("+-"), addend)) >>
     (rest.into_iter().fold(first, |acc, (op, i)| {
@@ -37,6 +47,20 @@ named!(term<&str, Term>, do_parse!(
             _ => unreachable!(),
         };
         MathOp { opr: op, t1: Box::new(acc), t2: Box::new(i) }
+    }))));
+
+named!(term<&str, Term>, ws!(do_parse!(
+    left: equalend >>
+    right: opt!(ws!(tuple!(alt!(tag!("==")|tag!("!=")), equalend))) >>
+    (match right {
+        None => left,
+        Some((op, right)) => {
+            match op {
+                "==" => Equals { left_side: Box::new(left), right_side: Box::new(right) },
+                "!=" => NotEquals { left_side: Box::new(left), right_side: Box::new(right) },
+                _ => unreachable!(),
+            }
+        }
     }))));
 
 #[test]
@@ -122,6 +146,45 @@ fn test_term() {
                     })
                 }),
                 t2: Box::new(NumConst(4))
+            }
+        ))
+    );
+
+    assert_eq!(
+        term("1+2==3-4;"),
+        //      ==
+        //    /    \
+        //   +      -
+        //  / \    / \
+        // 1   2  3   4
+        Ok((
+            ";",
+            Equals {
+                left_side: Box::new(MathOp {
+                    opr: Add,
+                    t1: Box::new(NumConst(1)),
+                    t2: Box::new(NumConst(2))
+                }),
+                right_side: Box::new(MathOp {
+                    opr: Minus,
+                    t1: Box::new(NumConst(3)),
+                    t2: Box::new(NumConst(4))
+                })
+            }
+        ))
+    );
+
+    assert_eq!(
+        term("if 1 == 2 then false else true endif;"),
+        Ok((
+            ";",
+            IfStmt {
+                test: Box::new(Equals {
+                    left_side: Box::new(NumConst(1)),
+                    right_side: Box::new(NumConst(2))
+                }),
+                then_body: Box::new(BoolConst(false)),
+                else_body: Box::new(BoolConst(true))
             }
         ))
     );
