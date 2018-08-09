@@ -1,6 +1,6 @@
 pub enum Term {
     Var (String),
-    Lambda {var_term: Box<Term>, function: Box<Term>},
+    Lambda {var_name: String, function: Box<Term>},
     Apply {var_term: Box<Term>, function: Box<Term>},
 
     /* Constants */
