@@ -1,7 +1,7 @@
 mod ast;
-mod value;
-mod type_check;
 mod eval;
+mod type_check;
+mod value;
 
 fn main() {
     println!("Hello, world!");
