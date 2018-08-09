@@ -35,6 +35,16 @@ named!(lambda<&str, Term>, ws!(do_parse!(
         }
     }))));
 
+named!(terminal<&str, Term>, alt!(
+    variable | number | boolean | delimited!(char!('('), term, char!(')'))));
+
+named!(application<&str, Term>, ws!(do_parse!(
+    first: terminal >>
+    rest: many0!(ws!(terminal)) >>
+    (rest.into_iter().fold(first, |acc, i| {
+        Apply { var_term: Box::new(i), function: Box::new(acc) }
+    })))));
+
 named!(multiplicand<&str, Term>, alt!(
     do_parse!(
         tag!("if") >>
@@ -45,7 +55,7 @@ named!(multiplicand<&str, Term>, alt!(
         f: term >>
         tag!("endif") >>
         (IfStmt { test: Box::new(c), then_body: Box::new(t), else_body: Box::new(f) }))
-    | variable | number | boolean));
+    | application));
 
 named!(addend<&str, Term>, ws!(do_parse!(
     first: multiplicand >>
@@ -230,6 +240,27 @@ fn test_term() {
                 }),
                 then_body: Box::new(BoolConst(false)),
                 else_body: Box::new(BoolConst(true))
+            }
+        ))
+    );
+}
+
+#[test]
+fn test_apply() {
+    assert_eq!(
+        term("a b c + 5;"),
+        Ok((
+            ";",
+            MathOp {
+                opr: Add,
+                t1: Box::new(Apply {
+                    var_term: Box::new(Var("c".to_string())),
+                    function: Box::new(Apply {
+                            var_term: Box::new(Var("b".to_string())),
+                            function: Box::new(Var("a".to_string()))
+                    })
+                }),
+                t2: Box::new(NumConst(5))
             }
         ))
     );
