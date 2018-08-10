@@ -25,6 +25,17 @@ fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
                 func_term: expr.clone(),
             })
         }
+        Term::Apply { var_term, function } => {
+            match type_check(function, env)? {
+                TermType::Func{ name, func_term } => {
+                    let var_type = type_check(var_term, env)?;
+                    let mut env_prime = env.0.clone();
+                    env_prime.insert(name.clone(), var_type);
+                    type_check (&func_term, &TyEnv(env_prime))
+                },
+                _ => Err("terms need to be applied to function types".to_string()),
+            }
+        }
         Term::NumConst(_) => Ok(TermType::Int),
         Term::BoolConst(_) => Ok(TermType::Bool),
         Term::MathOp { opr: _, t1, t2 } => {
