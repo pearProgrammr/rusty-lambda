@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub enum TermType {
     Int,
     Bool,
-    Func { name: String, t1: Box<TermType> },
+    Func { name: String, func_term: Box<Term> },
 }
 
 /// This represents a binding between names and TermTypes.
@@ -20,11 +20,9 @@ fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
             .ok_or("Variable name missing in environment")?
             .clone()),
         Term::Lambda { var_name, expr } => {
-            let mut env_prime = env.0.clone();
-            env_prime.insert(var_name.to_string(), TermType::Int);
             Ok(TermType::Func {
                 name: var_name.clone(),
-                t1: Box::new(type_check(expr, &TyEnv(env_prime))?),
+                func_term: expr.clone(),
             })
         }
         Term::NumConst(_) => Ok(TermType::Int),

@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Term {
     Var(String),
     Lambda {
@@ -40,7 +40,7 @@ pub enum Term {
     },
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum BinMathOp {
     Add,
     Minus,
