@@ -1,6 +1,6 @@
 mod ast;
-mod value;
 mod type_check;
+mod value;
 //mod eval;
 
 fn main() {

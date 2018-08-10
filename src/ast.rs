@@ -1,23 +1,46 @@
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum Term <'a>{
-    Var (&'static str),
-    Lambda {var_name: &'static str, expr: &'a Term<'a>},
-    Apply {var_term: &'a Term<'a>, function: &'a Term<'a>},
+#[derive(PartialEq, Debug)]
+pub enum Term {
+    Var(String),
+    Lambda {
+        var_name: String,
+        expr: Box<Term>,
+    },
+    Apply {
+        var_term: Box<Term>,
+        function: Box<Term>,
+    },
 
     /* Constants */
-    NumConst (u64),
-    BoolConst (bool),
+    NumConst(u64),
+    BoolConst(bool),
 
     /* Operations */
-    MathOp {opr: BinMathOp, t1: &'a Term<'a>, t2: &'a Term<'a>},
-    IfStmt {test: &'a Term<'a>, then_body: &'a Term<'a>, else_body: &'a Term<'a>},
-    Equals {left_side: &'a Term<'a>, right_side: &'a Term<'a>},
-    NotEquals {left_side: &'a Term<'a>, right_side: &'a Term<'a>},
+    MathOp {
+        opr: BinMathOp,
+        t1: Box<Term>,
+        t2: Box<Term>,
+    },
+    IfStmt {
+        test: Box<Term>,
+        then_body: Box<Term>,
+        else_body: Box<Term>,
+    },
+    Equals {
+        left_side: Box<Term>,
+        right_side: Box<Term>,
+    },
+    NotEquals {
+        left_side: Box<Term>,
+        right_side: Box<Term>,
+    },
 
-    Assignm {var_name: &'a str, expr: &'a Term<'a>},
+    Assignm {
+        var_name: String,
+        expr: Box<Term>,
+    },
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Debug)]
 pub enum BinMathOp {
     Add,
     Minus,
