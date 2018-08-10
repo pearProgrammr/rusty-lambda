@@ -82,7 +82,6 @@ fn type_check_bin_logic_op(t1: &TermType, t2: &TermType) -> Result<TermType, Str
     }
 }
 
-/// Borrow checker gets thrown off from returning t1 in match_type so we need to annotate it with <'a>
 fn type_check_if(c: &TermType, tb: &TermType, eb: &TermType) -> Result<TermType, String> {
     match c {
         TermType::Bool => match_type(tb, eb),
@@ -90,7 +89,6 @@ fn type_check_if(c: &TermType, tb: &TermType, eb: &TermType) -> Result<TermType,
     }
 }
 
-/// Borrow checker gets thrown off from returning t1 so we need to annotate it with <'a>
 fn match_type(t1: &TermType, t2: &TermType) -> Result<TermType, String> {
     if t1 == t2 {
         Ok(t1.clone())
