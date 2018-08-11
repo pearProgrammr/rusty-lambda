@@ -1,7 +1,7 @@
 use ast::*;
 use std::collections::HashMap;
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum TermType {
     Int,
     Bool,
@@ -9,7 +9,7 @@ pub enum TermType {
 }
 
 /// This represents a binding between names and TermTypes.
-struct TyEnv(HashMap<String, TermType>);
+pub struct TyEnv(HashMap<String, TermType>);
 
 // Main Type checking function.
 // This evaluates a term to a TermType or throw an error.
@@ -95,4 +95,89 @@ fn match_type(t1: &TermType, t2: &TermType) -> Result<TermType, String> {
     } else {
         Err("Types do not match".to_string()) // be more descriptive. TODO: write a pretty printer for types
     }
+}
+
+
+/* Tests */
+
+#[test]
+fn test_num_const() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::NumConst(4);
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
+}
+
+#[test]
+fn test_bool_const() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::BoolConst(false);
+    assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
+}
+
+
+#[test]
+fn test_bool_bin() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::Equals{
+        left_side: Box::new(Term::BoolConst(false)),
+        right_side: Box::new(Term::BoolConst(false))
+    };
+    assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
+}
+
+#[test]
+fn test_bool_bin_int() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::Equals {
+        left_side: Box::new(Term::NumConst(5)),
+        right_side: Box::new(Term::NumConst(6))
+    };
+    assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
+}
+
+#[test]
+fn test_int_bin_int() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::MathOp {
+        opr: BinMathOp::Add,
+        t1: Box::new(Term::NumConst(5)),
+        t2: Box::new(Term::NumConst(6))
+    };
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
+}
+
+#[test]
+fn test_int_bin_int_nested() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::MathOp {
+        opr: BinMathOp::Minus,
+        t1: Box::new(Term::NumConst(5)),
+        t2: Box::new(
+            Term::MathOp {
+                opr: BinMathOp::Multiply,
+                t1: Box::new(
+                    Term::MathOp {
+                    opr: BinMathOp::Divide,
+                    t1: Box::new(Term::NumConst(24)),
+                    t2: Box::new(Term::NumConst(8)),
+                }),
+                t2: Box::new(Term::NumConst(8)),
+        })
+    };
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
+}
+
+#[test]
+fn test_bool_bin_nested() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::NotEquals {
+        left_side: Box::new(Term::BoolConst(false)),
+        right_side: Box::new(
+            Term::Equals{
+                left_side: Box::new(Term::NumConst(4)),
+                right_side: Box::new(Term::NumConst(1000)),
+            },
+        )
+    };
+    assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
 }
