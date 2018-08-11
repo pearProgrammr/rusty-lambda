@@ -181,3 +181,120 @@ fn test_bool_bin_nested() {
     };
     assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
 }
+
+#[test]
+fn test_var_does_not_exist() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::Var("v1".to_string());
+    assert_eq!(Err("Variable name missing in environment".to_string()), type_check(&ast, &te));
+}
+
+#[test]
+fn if_test_1() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::IfStmt {
+        test: Box::new(Term::BoolConst(true)),
+        then_body: Box::new(Term::NumConst(1)),
+        else_body: Box::new(Term::NumConst(8)),
+    };
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
+}
+
+#[test]
+fn if_test_2() {
+    let te = TyEnv(HashMap::new());
+    let ast = Term::IfStmt {
+        test: Box::new(Term::NumConst(9)),
+        then_body: Box::new(Term::NumConst(1)),
+        else_body: Box::new(Term::NumConst(8)),
+    };
+    assert_eq!(
+        Err("Condition to if must be a boolean".to_string()),
+        type_check(&ast, &te)
+   );
+}
+
+#[test]
+fn test_var_exists() {
+    let mut map = HashMap::new();
+    map.insert("v1".to_string(), TermType::Int);
+    let te = TyEnv(map);
+    let ast = Term::Var("v1".to_string());
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
+}
+
+#[test]
+fn test_simple_lambda_1() {
+    let math_func = Term::MathOp {
+        opr: BinMathOp::Add,
+        t1: Box::new(Term::Var("v1".to_string())),
+        t2: Box::new(Term::NumConst(6))
+    };
+    let math_func2 = math_func.clone();
+
+    let te = TyEnv(HashMap::new());
+    let ast = Term::Lambda {
+        var_name: "v1".to_string(),
+        expr: Box::new(math_func),
+    };
+
+    assert_eq!(
+        Ok(TermType::Func {
+            name: "v1".to_string(),
+            func_term: Box::new(math_func2),
+        }),
+        type_check(&ast, &te)
+   );
+}
+
+#[test]
+fn test_apply_1() {
+    let math_expr = Term::MathOp {
+        opr: BinMathOp::Add,
+        t1: Box::new(Term::Var("v1".to_string())),
+        t2: Box::new(Term::NumConst(6))
+    };
+    let math_func = Term::Lambda {
+        var_name: "v1".to_string(),
+        expr: Box::new(math_expr),
+    };
+
+    let te = TyEnv(HashMap::new());
+    let ast = Term::Apply {
+        var_term: Box::new(Term::NumConst(1)),
+        function: Box::new(math_func),
+    };
+
+    assert_eq!(
+        Ok(TermType::Int),
+        type_check(&ast, &te)
+   );
+}
+
+#[test]
+/// Overrides existing v1
+fn test_apply_2() {
+    let math_expr = Term::MathOp {
+        opr: BinMathOp::Add,
+        t1: Box::new(Term::Var("v1".to_string())),
+        t2: Box::new(Term::NumConst(6))
+    };
+    let math_func = Term::Lambda {
+        var_name: "v1".to_string(),
+        expr: Box::new(math_expr),
+    };
+
+    let mut map = HashMap::new();
+    map.insert("v1".to_string(), TermType::Bool);
+    let te = TyEnv(map);
+
+    let ast = Term::Apply {
+        var_term: Box::new(Term::NumConst(1)),
+        function: Box::new(math_func),
+    };
+
+    assert_eq!(
+        Ok(TermType::Int),
+        type_check(&ast, &te)
+   );
+}
