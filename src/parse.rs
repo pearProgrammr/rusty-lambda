@@ -119,7 +119,9 @@ fn file(contents: &str) -> Result<Vec<Term>, &'static str> {
 #[test]
 fn test_variable() {
     use nom::{
-        Context::Code, Err::Error, ErrorKind::{Not, RegexpFind},
+        Context::Code,
+        Err::Error,
+        ErrorKind::{Not, RegexpFind},
     };
 
     assert_eq!(
