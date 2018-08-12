@@ -11,7 +11,6 @@ static EVAL_MATH_ERROR: &'static str =
     "Invalid math operation. Both sides must evaluate to numbers";
 static EVAL_BOOL_ERROR: &'static str =
     "Both terms in equality must be of the same type. Equality on functions are not supported";
-static EVAL_INVALID_TERM: &'static str = "Invalid term";
 static EVAL_IF_COND_REQUIRES_BOOL: &'static str = "test condition must be a boolean";
 
 /// Main evaluation function. This part of the code assumes that the types are
@@ -53,12 +52,11 @@ pub fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
             test: c,
             then_body: tb,
             else_body: eb,
-        } => eval_if(eval(c, env)?, tb, eb, env),
+        } => eval_if(&eval(c, env)?, tb, eb, env),
         Term::Assignm { var_name, expr } => Ok(Value::Assignm {
             name: var_name.clone(),
             val: Box::new(eval(expr, env)?),
         }),
-        _ => Err(EVAL_INVALID_TERM.to_string()),
     }
 }
 
@@ -92,7 +90,7 @@ fn eval_not_equals(t1: Value, t2: Value) -> Result<Value, String> {
 // Note: at this point, type checking should have ensured that both branches of the condition
 // have the same type.
 fn eval_if(
-    test: Value,
+    test: &Value,
     then_body: &Term,
     else_body: &Term,
     env: &EvalEnv,

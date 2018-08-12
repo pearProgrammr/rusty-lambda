@@ -35,7 +35,7 @@ pub fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
         },
         Term::NumConst(_) => Ok(TermType::Int),
         Term::BoolConst(_) => Ok(TermType::Bool),
-        Term::MathOp { opr: _, t1, t2 } => {
+        Term::MathOp { t1, t2, .. } => {
             type_check_bin_math_op(&type_check(t1, env)?, &type_check(t2, env)?)
         }
         Term::Equals {
@@ -55,8 +55,7 @@ pub fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
             &type_check(tb, env)?,
             &type_check(eb, env)?,
         ),
-        Term::Assignm { var_name: _, expr } => type_check(expr, env),
-        _ => Err("Type checker: Invalid term".to_string()),
+        Term::Assignm { expr, .. } => type_check(expr, env),
     }
 }
 
