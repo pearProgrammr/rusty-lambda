@@ -1,10 +1,10 @@
-use ast::BinMathOp::{self, *};
+use ast::BinMathOp::*;
 use ast::Term::{self, *};
 use nom::digit;
 use nom::types::CompleteStr;
 use std::num::ParseIntError;
 
-named!(variable<&str, Term>, do_parse!(
+named!(variable<CompleteStr, Term>, do_parse!(
     not!(tag!("if")) >>
     not!(tag!("then")) >>
     not!(tag!("else")) >>
@@ -14,16 +14,16 @@ named!(variable<&str, Term>, do_parse!(
     var_str: re_find!(r"^(?i:[a-z_][a-z0-9_]*)") >>
     (Var(var_str.to_string()))));
 
-named!(number<&str, Term>, map_res!(
-    digit, |d| {
-        let a: Result<Term, ParseIntError> = Ok(NumConst(u64::from_str_radix(d, 10)?));
+named!(number<CompleteStr, Term>, map_res!(
+    digit, |d: CompleteStr| {
+        let a: Result<Term, ParseIntError> = Ok(NumConst(u64::from_str_radix(*d, 10)?));
         a
     }));
 
-named!(boolean<&str, Term>, map_res!(alt!( tag!("true") | tag!("false")),
-    |s| {let a: Result<Term, ()> = Ok(BoolConst(s == "true")); a}));
+named!(boolean<CompleteStr, Term>, map_res!(alt!( tag!("true") | tag!("false")),
+    |s: CompleteStr| {let a: Result<Term, ()> = Ok(BoolConst(*s == "true")); a}));
 
-named!(lambda<&str, Term>, ws!(do_parse!(
+named!(lambda<CompleteStr, Term>, ws!(do_parse!(
     tag!(r"\") >>
     var: variable >>
     tag!(".") >>
@@ -35,17 +35,17 @@ named!(lambda<&str, Term>, ws!(do_parse!(
         }
     }))));
 
-named!(terminal<&str, Term>, alt!(
-    variable | number | boolean | delimited!(char!('('), term, char!(')'))));
+named!(terminal<CompleteStr, Term>, alt!(
+    variable | number | boolean | delimited!(char!('('), alt!(lambda | term), char!(')'))));
 
-named!(application<&str, Term>, ws!(do_parse!(
+named!(application<CompleteStr, Term>, ws!(do_parse!(
     first: terminal >>
     rest: many0!(ws!(terminal)) >>
     (rest.into_iter().fold(first, |acc, i| {
         Apply { var_term: Box::new(i), function: Box::new(acc) }
     })))));
 
-named!(multiplicand<&str, Term>, alt!(
+named!(multiplicand<CompleteStr, Term>, alt!(
     do_parse!(
         tag!("if") >>
         c: term >>
@@ -57,7 +57,7 @@ named!(multiplicand<&str, Term>, alt!(
         (IfStmt { test: Box::new(c), then_body: Box::new(t), else_body: Box::new(f) }))
     | application));
 
-named!(addend<&str, Term>, ws!(do_parse!(
+named!(addend<CompleteStr, Term>, ws!(do_parse!(
     first: multiplicand >>
     rest: many0!(ws!(tuple!(one_of!("*/"), multiplicand))) >>
     (rest.into_iter().fold(first, |acc, (op, i)| {
@@ -69,7 +69,7 @@ named!(addend<&str, Term>, ws!(do_parse!(
         MathOp { opr: op, t1: Box::new(acc), t2: Box::new(i) }
     })))));
 
-named!(equalend<&str, Term>, ws!(do_parse!(
+named!(equalend<CompleteStr, Term>, ws!(do_parse!(
     first: addend >>
     rest: many0!(ws!(tuple!(one_of!("+-"), addend))) >>
     (rest.into_iter().fold(first, |acc, (op, i)| {
@@ -81,18 +81,27 @@ named!(equalend<&str, Term>, ws!(do_parse!(
         MathOp { opr: op, t1: Box::new(acc), t2: Box::new(i) }
     })))));
 
-named!(term<&str, Term>, ws!(do_parse!(
+named!(term<CompleteStr, Term>, ws!(do_parse!(
     left: equalend >>
     right: opt!(ws!(tuple!(alt!(tag!("==")|tag!("!=")), equalend))) >>
     (match right {
         None => left,
         Some((op, right)) => {
-            match op {
+            match *op {
                 "==" => Equals { left_side: Box::new(left), right_side: Box::new(right) },
                 "!=" => NotEquals { left_side: Box::new(left), right_side: Box::new(right) },
                 _ => unreachable!(),
             }
         }
+    }))));
+
+named!(assignment<CompleteStr, Term>, ws!(do_parse!(
+    var_name: variable >>
+    tag!(":=") >>
+    expr: term >>
+    (match var_name {
+        Var(var_name) => Assignm { var_name, expr: Box::new(expr) },
+        _ => unreachable!(),
     }))));
 
 #[test]
@@ -102,45 +111,61 @@ fn test_variable() {
     };
 
     assert_eq!(
-        variable("_things{}"),
-        Ok(("{}", Var("_things".to_string())))
+        variable(CompleteStr("_things{}")),
+        Ok((CompleteStr("{}"), Var("_things".to_string())))
     );
     assert_eq!(
-        variable("_things _stuff"),
-        Ok((" _stuff", Var("_things".to_string())))
+        variable(CompleteStr("_things _stuff")),
+        Ok((CompleteStr(" _stuff"), Var("_things".to_string())))
     );
     assert_eq!(
-        variable("1_things::/"),
-        Err(Error(Code("1_things::/", RegexpFind)))
+        variable(CompleteStr("1_things::/")),
+        Err(Error(Code(CompleteStr("1_things::/"), RegexpFind)))
     );
-    assert_eq!(variable("endif"), Err(Error(Code("endif", Not))));
+    assert_eq!(
+        variable(CompleteStr("endif")),
+        Err(Error(Code(CompleteStr("endif"), Not)))
+    );
 }
 
 #[test]
 fn test_number() {
     use nom::{Context::Code, Err::Error, ErrorKind::Digit};
 
-    assert_eq!(number("13potato"), Ok(("potato", NumConst(13))));
-    assert_eq!(number("potato13"), Err(Error(Code("potato13", Digit))));
+    assert_eq!(
+        number(CompleteStr("13potato")),
+        Ok((CompleteStr("potato"), NumConst(13)))
+    );
+    assert_eq!(
+        number(CompleteStr("potato13")),
+        Err(Error(Code(CompleteStr("potato13"), Digit)))
+    );
 }
 
 #[test]
 fn test_boolean() {
     use nom::{Context::Code, Err::Error, ErrorKind::Alt};
 
-    assert_eq!(boolean("truefalse"), Ok(("false", BoolConst(true))));
-    assert_eq!(boolean("falsefalse"), Ok(("false", BoolConst(false))));
-    assert_eq!(boolean("falsfalse"), Err(Error(Code("falsfalse", Alt))));
+    assert_eq!(
+        boolean(CompleteStr("truefalse")),
+        Ok((CompleteStr("false"), BoolConst(true)))
+    );
+    assert_eq!(
+        boolean(CompleteStr("falsefalse")),
+        Ok((CompleteStr("false"), BoolConst(false)))
+    );
+    assert_eq!(
+        boolean(CompleteStr("falsfalse")),
+        Err(Error(Code(CompleteStr("falsfalse"), Alt)))
+    );
 }
 
 #[test]
 fn test_lambda() {
-    use nom::{Context::Code, Err::Error, ErrorKind::Alt};
-
     assert_eq!(
-        lambda(r"\ x . x + 1;"),
+        lambda(CompleteStr(r"\ x . x + 1")),
         Ok((
-            ";",
+            CompleteStr(""),
             Lambda {
                 var_name: "x".to_string(),
                 expr: Box::new(MathOp {
@@ -155,12 +180,10 @@ fn test_lambda() {
 
 #[test]
 fn test_term() {
-    use nom::{Context::Code, Err::Error, ErrorKind::Alt};
-
     assert_eq!(
-        term(" 1 + 2 - 3 ;"),
+        term(CompleteStr(" 1 + 2 - 3  ")),
         Ok((
-            ";",
+            CompleteStr(""),
             //     -
             //    / \
             //   +   3
@@ -179,7 +202,7 @@ fn test_term() {
     );
 
     assert_eq!(
-        term("1 + 2 * 3 - 4 ;"),
+        term(CompleteStr("1 + 2 * 3 - 4  ")),
         //     -
         //    / \
         //   +   4
@@ -188,7 +211,7 @@ fn test_term() {
         //    / \
         //   2   3
         Ok((
-            ";",
+            CompleteStr(""),
             MathOp {
                 opr: Minus,
                 t1: Box::new(MathOp {
@@ -206,14 +229,14 @@ fn test_term() {
     );
 
     assert_eq!(
-        term("1 + 2 == 3 - 4 ;"),
+        term(CompleteStr("1 + 2 == 3 - 4  ")),
         //      ==
         //    /    \
         //   +      -
         //  / \    / \
         // 1   2  3   4
         Ok((
-            ";",
+            CompleteStr(""),
             Equals {
                 left_side: Box::new(MathOp {
                     opr: Add,
@@ -230,9 +253,9 @@ fn test_term() {
     );
 
     assert_eq!(
-        term("if 1 == 2 then false else true endif ;"),
+        term(CompleteStr("if 1 == 2 then false else true endif  ")),
         Ok((
-            ";",
+            CompleteStr(""),
             IfStmt {
                 test: Box::new(Equals {
                     left_side: Box::new(NumConst(1)),
@@ -248,19 +271,37 @@ fn test_term() {
 #[test]
 fn test_apply() {
     assert_eq!(
-        term("a b c + 5;"),
+        term(CompleteStr("a b c + 5")),
         Ok((
-            ";",
+            CompleteStr(""),
             MathOp {
                 opr: Add,
                 t1: Box::new(Apply {
                     var_term: Box::new(Var("c".to_string())),
                     function: Box::new(Apply {
-                            var_term: Box::new(Var("b".to_string())),
-                            function: Box::new(Var("a".to_string()))
+                        var_term: Box::new(Var("b".to_string())),
+                        function: Box::new(Var("a".to_string()))
                     })
                 }),
                 t2: Box::new(NumConst(5))
+            }
+        ))
+    );
+}
+
+#[test]
+fn test_assignment() {
+    assert_eq!(
+        assignment(CompleteStr("_a := 1 + 1")),
+        Ok((
+            CompleteStr(""),
+            Assignm {
+                var_name: "_a".to_string(),
+                expr: Box::new(MathOp {
+                    opr: Add,
+                    t1: Box::new(NumConst(1)),
+                    t2: Box::new(NumConst(1))
+                })
             }
         ))
     );
