@@ -58,6 +58,7 @@ fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
             &type_check(tb, env)?,
             &type_check(eb, env)?,
         ),
+        Term::Assignm { var_name: _, expr } => type_check(expr, env),
         _ => Err("Type checker: Invalid term".to_string()),
     }
 }
