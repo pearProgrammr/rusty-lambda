@@ -60,6 +60,12 @@ fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
             then_body: tb,
             else_body: eb
         } => eval_if (eval(c, env)?, tb, eb, env),
+        Term::Assignm { var_name, expr } => {
+            Ok(Value::Assignm {
+                name: var_name.clone(),
+                val: Box::new(eval(expr, env)?)
+            })
+        },
         _ => Err(EVAL_INVALID_TERM.to_string()),
     }
 }
