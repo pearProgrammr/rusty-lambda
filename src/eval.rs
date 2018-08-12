@@ -23,6 +23,23 @@ fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
             .get(n)
             .ok_or("Variable name missing in environment")?
             .clone()),
+        Term::Lambda { var_name, expr } => {
+            Ok(Value::Func {
+                name: var_name.clone(),
+                func_term: expr.clone(),
+            })
+        }
+        Term::Apply { var_term, function } => {
+            match eval(function, env)? {
+                Value::Func { name, func_term} => {
+                    let var_val = eval (var_term, env)?;
+                    let mut env_prime = env.0.clone();
+                    env_prime.insert(name.clone(), var_val);
+                    eval (&func_term, &EvalEnv(env_prime))
+                },
+                _ => Err("terms need to be applied to function types".to_string()),
+            }
+        }
         Term::NumConst (n) => Ok(Value::Num (*n)),
         Term::BoolConst(b) => Ok(Value::Bool(*b)),
         Term::MathOp {
