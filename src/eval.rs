@@ -17,33 +17,33 @@ static EVAL_IF_COND_REQUIRES_BOOL: &'static str = "test condition must be a bool
 /// correct. Although certain patterns would be impossible to reach after type
 /// checking, they are included for completeness... and to satisfy the rust
 /// compiler
-fn eval(node: Term, env: &EvalEnv) -> Result<Value, String> {
+fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
     match node {
-        Term::NumConst (n) => Ok(Value::Num (n)),
-        Term::BoolConst(b) => Ok(Value::Bool(b)),
+        Term::NumConst (n) => Ok(Value::Num (*n)),
+        Term::BoolConst(b) => Ok(Value::Bool(*b)),
         Term::MathOp {
             opr,
             t1,
             t2
-        } => eval_bin_math_op(opr, eval(*t1, env)?, eval(*t2, env)?),
+        } => eval_bin_math_op(opr, eval(t1, env)?, eval(t2, env)?),
         Term::Equals {
             left_side: t1,
             right_side: t2
-        } => eval_equals (eval(*t1, env)?, eval(*t2, env)?),
+        } => eval_equals (eval(t1, env)?, eval(t2, env)?),
         Term::NotEquals {
             left_side: t1,
             right_side: t2
-        } => eval_not_equals (eval(*t1, env)?, eval(*t2, env)?),
+        } => eval_not_equals (eval(t1, env)?, eval(t2, env)?),
         Term::IfStmt {
             test: c,
             then_body: tb,
             else_body: eb
-        } => eval_if (eval(*c, env)?, *tb, *eb, env),
+        } => eval_if (eval(c, env)?, tb, eb, env),
         _ => Err(EVAL_INVALID_TERM.to_string()),
     }
 }
 
-fn eval_bin_math_op (opr: BinMathOp, t1: Value, t2: Value) -> Result<Value, String> {
+fn eval_bin_math_op (opr: &BinMathOp, t1: Value, t2: Value) -> Result<Value, String> {
     match (opr, t1, t2) {
         (BinMathOp::Add, Value::Num(v1), Value::Num(v2)) => Ok(Value::Num(v1 + v2)),
         (BinMathOp::Minus, Value::Num(v1), Value::Num(v2)) => Ok(Value::Num(v1 - v2)),
@@ -72,7 +72,7 @@ fn eval_not_equals (t1: Value, t2: Value) -> Result<Value, String> {
 // Evaluates if/then/else statement.
 // Note: at this point, type checking should have ensured that both branches of the condition
 // have the same type.
-fn eval_if (test: Value, then_body: Term, else_body: Term, env: &EvalEnv) -> Result<Value, String> {
+fn eval_if (test: Value, then_body: &Term, else_body: &Term, env: &EvalEnv) -> Result<Value, String> {
     match test {
         Value::Bool(true) => eval(then_body, env),
         Value::Bool(false) => eval(else_body, env),
@@ -86,13 +86,13 @@ fn test_ev_const_vals(){
     let env = EvalEnv(HashMap::new());
     assert_eq!(
         Ok(Value::Num(1)),
-        eval (ast_num, &env)
+        eval (&ast_num, &env)
     );
 
     let ast_bool = Term::BoolConst(true);
     assert_eq!(
         Ok(Value::Bool(true)),
-        eval (ast_bool, &env)
+        eval (&ast_bool, &env)
     );
 }
 
@@ -132,27 +132,27 @@ fn test_mathops(){
     let env = EvalEnv(HashMap::new());
     assert_eq!(
         Ok(Value::Num(2)),
-        eval (sub_expr, &env)
+        eval (&sub_expr, &env)
     );
     assert_eq!(
         Ok(Value::Num(10)),
-        eval (add_expr, &env)
+        eval (&add_expr, &env)
     );
     assert_eq!(
         Ok(Value::Num(24)),
-        eval (mul_expr, &env)
+        eval (&mul_expr, &env)
     );
     assert_eq!(
         Ok(Value::Num(2)),
-        eval (div_expr, &env)
+        eval (&div_expr, &env)
     );
     assert_eq!(
         Err(EVAL_MATH_ERROR.to_string()),
-        eval (incorrect_1, &env)
+        eval (&incorrect_1, &env)
     );
     assert_eq!(
         Err(EVAL_MATH_ERROR.to_string()),
-        eval (incorrect_2, &env)
+        eval (&incorrect_2, &env)
     );
 }
 
@@ -181,23 +181,23 @@ fn test_boolops(){
     let env = EvalEnv(HashMap::new());
     assert_eq!(
         Ok(Value::Bool(false)),
-        eval (eq_expr_1, &env)
+        eval (&eq_expr_1, &env)
     );
     assert_eq!(
         Ok(Value::Bool(true)),
-        eval (eq_expr_2, &env)
+        eval (&eq_expr_2, &env)
     );
     assert_eq!(
         Ok(Value::Bool(false)),
-        eval (eq_expr_3, &env)
+        eval (&eq_expr_3, &env)
     );
     assert_eq!(
         Ok(Value::Bool(true)),
-        eval (eq_expr_4, &env)
+        eval (&eq_expr_4, &env)
     );
     assert_eq!(
         Err(EVAL_BOOL_ERROR.to_string()),
-        eval (eq_expr_5, &env)
+        eval (&eq_expr_5, &env)
     );
 }
 
@@ -221,14 +221,14 @@ fn test_if(){
     let env = EvalEnv(HashMap::new());
     assert_eq!(
         Ok(Value::Num(6)),
-        eval (if_1, &env)
+        eval (&if_1, &env)
     );
     assert_eq!(
         Err(EVAL_IF_COND_REQUIRES_BOOL.to_string()),
-        eval (if_2, &env)
+        eval (&if_2, &env)
     );
     assert_eq!(
         Ok(Value::Num(7)),
-        eval (if_3, &env)
+        eval (&if_3, &env)
     );
 }
