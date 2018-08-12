@@ -19,6 +19,10 @@ static EVAL_IF_COND_REQUIRES_BOOL: &'static str = "test condition must be a bool
 /// compiler
 fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
     match node {
+        Term::Var(n) => Ok(env.0
+            .get(n)
+            .ok_or("Variable name missing in environment")?
+            .clone()),
         Term::NumConst (n) => Ok(Value::Num (*n)),
         Term::BoolConst(b) => Ok(Value::Bool(*b)),
         Term::MathOp {

@@ -1,5 +1,5 @@
 /// This enum represents all possible values that a term can evaluate to.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Value {
     Num(u64),
     Bool(bool),
