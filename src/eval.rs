@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use value::*;
 
 /// This represents a binding between names and TermTypes.
-pub struct EvalEnv(HashMap<String, Value>);
+pub struct EvalEnv(pub HashMap<String, Value>);
 
 /// Error messages
 
@@ -18,7 +18,7 @@ static EVAL_IF_COND_REQUIRES_BOOL: &'static str = "test condition must be a bool
 /// correct. Although certain patterns would be impossible to reach after type
 /// checking, they are included for completeness... and to satisfy the rust
 /// compiler
-fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
+pub fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
     match node {
         Term::Var(n) => Ok(env
             .0

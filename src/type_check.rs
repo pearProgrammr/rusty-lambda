@@ -9,11 +9,11 @@ pub enum TermType {
 }
 
 /// This represents a binding between names and TermTypes.
-pub struct TyEnv(HashMap<String, TermType>);
+pub struct TyEnv(pub HashMap<String, TermType>);
 
 // Main Type checking function.
 // This evaluates a term to a TermType or throw an error.
-fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
+pub fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
     match term {
         Term::Var(n) => Ok(env
             .0

@@ -104,13 +104,13 @@ named!(assignment<CompleteStr, Term>, ws!(do_parse!(
         _ => unreachable!(),
     }))));
 
-named!(_file<CompleteStr, Vec<Term>>, do_parse!(
+named!(_file<CompleteStr, Vec<Term>>, ws!(do_parse!(
     list: ws!(separated_list!(tag!(";"), alt!(assignment | term))) >>
     tag!(";") >>
     eof!() >>
-    (list)));
+    (list))));
 
-fn file(contents: &str) -> Result<Vec<Term>, &'static str> {
+pub fn parse_file(contents: &str) -> Result<Vec<Term>, &'static str> {
     _file(CompleteStr(contents))
         .map(|i| i.1)
         .or(Err("Parse failed"))
@@ -322,9 +322,9 @@ fn test_assignment() {
 }
 
 #[test]
-fn test_file() {
+fn test_parse_file() {
     assert_eq!(
-        file("a := 1 + 1; a;"),
+        parse_file("a := 1 + 1; a;"),
         Ok(vec![
             Assignm {
                 var_name: "a".to_string(),
