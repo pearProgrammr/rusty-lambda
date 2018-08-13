@@ -1,6 +1,11 @@
 [package]
 name = "rusty-lambda"
 version = "0.1.0"
-authors = ["eschmaus <schmauss@pdx.edu>"]
+authors = ["eschmaus <schmauss@pdx.edu>", "D Scott Phillips <dsp2@pdx.edu>"]
+
+[dependencies.nom]
+version = "^4.0"
+features = ["regexp"]
 
 [dependencies]
+regex = "1"
