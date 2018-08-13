@@ -2,6 +2,7 @@
 name = "rusty-lambda"
 version = "0.1.0"
 authors = ["eschmaus <schmauss@pdx.edu>", "D Scott Phillips <dsp2@pdx.edu>"]
+build = "build.rs"
 
 [dependencies.nom]
 version = "^4.0"

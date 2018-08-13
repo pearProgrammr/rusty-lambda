@@ -30,10 +30,14 @@ pub fn eval(node: &Term, env: &EvalEnv) -> Result<Value, String> {
             func_term: expr.clone(),
         }),
         Term::Apply { var_term, function } => match eval(function, env)? {
-            Value::Closure { env: closure_env, name, func_term } => {
+            Value::Closure {
+                env: closure_env,
+                name,
+                func_term,
+            } => {
                 let var_val = eval(var_term, env)?;
                 let mut env_prime = env.0.clone();
-                for (k,v) in &closure_env {
+                for (k, v) in &closure_env {
                     env_prime.insert(k.to_string(), v.clone());
                 }
                 env_prime.insert(name.clone(), var_val);
