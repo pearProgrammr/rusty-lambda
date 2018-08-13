@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub enum TermType {
     Int,
     Bool,
-    Func { name: String, func_term: Box<Term> },
+    Func { env: HashMap<String, TermType>, name: String, func_term: Box<Term> },
 }
 
 /// This represents a binding between names and TermTypes.
@@ -21,13 +21,17 @@ pub fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
             .ok_or("Variable name missing in environment")?
             .clone()),
         Term::Lambda { var_name, expr } => Ok(TermType::Func {
+            env: env.0.clone(),
             name: var_name.clone(),
             func_term: expr.clone(),
         }),
         Term::Apply { var_term, function } => match type_check(function, env)? {
-            TermType::Func { name, func_term } => {
+            TermType::Func { env: term_env, name, func_term } => {
                 let var_type = type_check(var_term, env)?;
                 let mut env_prime = env.0.clone();
+                for (k,v) in term_env {
+                    env_prime.insert(k, v);
+                }
                 env_prime.insert(name.clone(), var_type);
                 type_check(&func_term, &TyEnv(env_prime))
             }
@@ -234,6 +238,7 @@ fn test_simple_lambda_1() {
 
     assert_eq!(
         Ok(TermType::Func {
+            env: HashMap::new(),
             name: "v1".to_string(),
             func_term: Box::new(math_func2),
         }),
