@@ -9,36 +9,33 @@ pub enum TermType {
 }
 
 /// This represents a binding between names and TermTypes.
-pub struct TyEnv(HashMap<String, TermType>);
+pub struct TyEnv(pub HashMap<String, TermType>);
 
 // Main Type checking function.
 // This evaluates a term to a TermType or throw an error.
-fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
+pub fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
     match term {
-        Term::Var(n) => Ok(env.0
+        Term::Var(n) => Ok(env
+            .0
             .get(n)
             .ok_or("Variable name missing in environment")?
             .clone()),
-        Term::Lambda { var_name, expr } => {
-            Ok(TermType::Func {
-                name: var_name.clone(),
-                func_term: expr.clone(),
-            })
-        }
-        Term::Apply { var_term, function } => {
-            match type_check(function, env)? {
-                TermType::Func{ name, func_term } => {
-                    let var_type = type_check(var_term, env)?;
-                    let mut env_prime = env.0.clone();
-                    env_prime.insert(name.clone(), var_type);
-                    type_check (&func_term, &TyEnv(env_prime))
-                },
-                _ => Err("terms need to be applied to function types".to_string()),
+        Term::Lambda { var_name, expr } => Ok(TermType::Func {
+            name: var_name.clone(),
+            func_term: expr.clone(),
+        }),
+        Term::Apply { var_term, function } => match type_check(function, env)? {
+            TermType::Func { name, func_term } => {
+                let var_type = type_check(var_term, env)?;
+                let mut env_prime = env.0.clone();
+                env_prime.insert(name.clone(), var_type);
+                type_check(&func_term, &TyEnv(env_prime))
             }
-        }
+            _ => Err("terms need to be applied to function types".to_string()),
+        },
         Term::NumConst(_) => Ok(TermType::Int),
         Term::BoolConst(_) => Ok(TermType::Bool),
-        Term::MathOp { opr: _, t1, t2 } => {
+        Term::MathOp { t1, t2, .. } => {
             type_check_bin_math_op(&type_check(t1, env)?, &type_check(t2, env)?)
         }
         Term::Equals {
@@ -58,8 +55,7 @@ fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
             &type_check(tb, env)?,
             &type_check(eb, env)?,
         ),
-        Term::Assignm { var_name: _, expr } => type_check(expr, env),
-        _ => Err("Type checker: Invalid term".to_string()),
+        Term::Assignm { expr, .. } => type_check(expr, env),
     }
 }
 
@@ -98,7 +94,6 @@ fn match_type(t1: &TermType, t2: &TermType) -> Result<TermType, String> {
     }
 }
 
-
 /* Tests */
 
 #[test]
@@ -115,13 +110,12 @@ fn test_bool_const() {
     assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
 }
 
-
 #[test]
 fn test_bool_bin() {
     let te = TyEnv(HashMap::new());
-    let ast = Term::Equals{
+    let ast = Term::Equals {
         left_side: Box::new(Term::BoolConst(false)),
-        right_side: Box::new(Term::BoolConst(false))
+        right_side: Box::new(Term::BoolConst(false)),
     };
     assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
 }
@@ -131,7 +125,7 @@ fn test_bool_bin_int() {
     let te = TyEnv(HashMap::new());
     let ast = Term::Equals {
         left_side: Box::new(Term::NumConst(5)),
-        right_side: Box::new(Term::NumConst(6))
+        right_side: Box::new(Term::NumConst(6)),
     };
     assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
 }
@@ -142,7 +136,7 @@ fn test_int_bin_int() {
     let ast = Term::MathOp {
         opr: BinMathOp::Add,
         t1: Box::new(Term::NumConst(5)),
-        t2: Box::new(Term::NumConst(6))
+        t2: Box::new(Term::NumConst(6)),
     };
     assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
 }
@@ -153,17 +147,15 @@ fn test_int_bin_int_nested() {
     let ast = Term::MathOp {
         opr: BinMathOp::Minus,
         t1: Box::new(Term::NumConst(5)),
-        t2: Box::new(
-            Term::MathOp {
-                opr: BinMathOp::Multiply,
-                t1: Box::new(
-                    Term::MathOp {
-                    opr: BinMathOp::Divide,
-                    t1: Box::new(Term::NumConst(24)),
-                    t2: Box::new(Term::NumConst(8)),
-                }),
+        t2: Box::new(Term::MathOp {
+            opr: BinMathOp::Multiply,
+            t1: Box::new(Term::MathOp {
+                opr: BinMathOp::Divide,
+                t1: Box::new(Term::NumConst(24)),
                 t2: Box::new(Term::NumConst(8)),
-        })
+            }),
+            t2: Box::new(Term::NumConst(8)),
+        }),
     };
     assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
 }
@@ -173,12 +165,10 @@ fn test_bool_bin_nested() {
     let te = TyEnv(HashMap::new());
     let ast = Term::NotEquals {
         left_side: Box::new(Term::BoolConst(false)),
-        right_side: Box::new(
-            Term::Equals{
-                left_side: Box::new(Term::NumConst(4)),
-                right_side: Box::new(Term::NumConst(1000)),
-            },
-        )
+        right_side: Box::new(Term::Equals {
+            left_side: Box::new(Term::NumConst(4)),
+            right_side: Box::new(Term::NumConst(1000)),
+        }),
     };
     assert_eq!(Ok(TermType::Bool), type_check(&ast, &te));
 }
@@ -187,7 +177,10 @@ fn test_bool_bin_nested() {
 fn test_var_does_not_exist() {
     let te = TyEnv(HashMap::new());
     let ast = Term::Var("v1".to_string());
-    assert_eq!(Err("Variable name missing in environment".to_string()), type_check(&ast, &te));
+    assert_eq!(
+        Err("Variable name missing in environment".to_string()),
+        type_check(&ast, &te)
+    );
 }
 
 #[test]
@@ -212,7 +205,7 @@ fn if_test_2() {
     assert_eq!(
         Err("Condition to if must be a boolean".to_string()),
         type_check(&ast, &te)
-   );
+    );
 }
 
 #[test]
@@ -229,7 +222,7 @@ fn test_simple_lambda_1() {
     let math_func = Term::MathOp {
         opr: BinMathOp::Add,
         t1: Box::new(Term::Var("v1".to_string())),
-        t2: Box::new(Term::NumConst(6))
+        t2: Box::new(Term::NumConst(6)),
     };
     let math_func2 = math_func.clone();
 
@@ -245,7 +238,7 @@ fn test_simple_lambda_1() {
             func_term: Box::new(math_func2),
         }),
         type_check(&ast, &te)
-   );
+    );
 }
 
 #[test]
@@ -253,7 +246,7 @@ fn test_apply_1() {
     let math_expr = Term::MathOp {
         opr: BinMathOp::Add,
         t1: Box::new(Term::Var("v1".to_string())),
-        t2: Box::new(Term::NumConst(6))
+        t2: Box::new(Term::NumConst(6)),
     };
     let math_func = Term::Lambda {
         var_name: "v1".to_string(),
@@ -266,10 +259,7 @@ fn test_apply_1() {
         function: Box::new(math_func),
     };
 
-    assert_eq!(
-        Ok(TermType::Int),
-        type_check(&ast, &te)
-   );
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
 }
 
 #[test]
@@ -278,7 +268,7 @@ fn test_apply_2() {
     let math_expr = Term::MathOp {
         opr: BinMathOp::Add,
         t1: Box::new(Term::Var("v1".to_string())),
-        t2: Box::new(Term::NumConst(6))
+        t2: Box::new(Term::NumConst(6)),
     };
     let math_func = Term::Lambda {
         var_name: "v1".to_string(),
@@ -294,8 +284,5 @@ fn test_apply_2() {
         function: Box::new(math_func),
     };
 
-    assert_eq!(
-        Ok(TermType::Int),
-        type_check(&ast, &te)
-   );
+    assert_eq!(Ok(TermType::Int), type_check(&ast, &te));
 }
