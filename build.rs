@@ -17,9 +17,13 @@ fn main() {
         let path = path.canonicalize().unwrap();
         let fullpath = path.to_str().unwrap();
         let stem = path.file_stem().unwrap().to_str().unwrap();
+        write!(rs,"#[test]\n").unwrap();
+        if fullpath.contains("fail") {
+            write!(rs,"#[should_panic]\n").unwrap();
+        }
         write!(
             rs,
-            "#[test]\nfn test_script_{}() {{ test_script(r\"{}\"); }}\n",
+            "fn test_script_{}() {{ test_script(r\"{}\"); }}\n",
             stem, fullpath
         ).unwrap();
     }
