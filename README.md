@@ -34,7 +34,12 @@ A few noteworthy quirks:
      ```
    * At the top level, assignments are also allowed:
      ```
-     const3 := (\_. 3)
+     const3 := (\_. 3);
+     ```
+   * At the end of each statement, a semi-colon is required:
+     ```
+     const1 := 1 + 1;
+     const1;
      ```
 
 For more examples see the .lam files in the tests/ directory.
