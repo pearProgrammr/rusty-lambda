@@ -5,6 +5,14 @@ programming language. The types and values supported for this
 language are unsigned integers, booleans, and functions (including
 closures).
 
+## Usage
+
+The interpreter can be called with the following command:
+
+./rusty-lambda [file]
+
+where file contains the syntax described. For examples, see the
+.lam files in the tests/ directory.
 
 ## Parser
 
