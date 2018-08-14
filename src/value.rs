@@ -6,6 +6,13 @@ use std::collections::HashMap;
 pub enum Value {
     Num(u64),
     Bool(bool),
-    Closure { env: HashMap<String, Value>, name: String, func_term: Box<Term> },
-    Assignm { name: String, val: Box<Value> },
+    Closure {
+        env: HashMap<String, Value>,
+        name: String,
+        func_term: Box<Term>,
+    },
+    Assignm {
+        name: String,
+        val: Box<Value>,
+    },
 }

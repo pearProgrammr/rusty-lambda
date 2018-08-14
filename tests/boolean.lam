@@ -1,0 +1,3 @@
+not := (\v. if v then false else true endif);
+not true;
+not false;

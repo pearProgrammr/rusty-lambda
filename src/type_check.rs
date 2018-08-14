@@ -5,7 +5,11 @@ use std::collections::HashMap;
 pub enum TermType {
     Int,
     Bool,
-    Func { env: HashMap<String, TermType>, name: String, func_term: Box<Term> },
+    Func {
+        env: HashMap<String, TermType>,
+        name: String,
+        func_term: Box<Term>,
+    },
 }
 
 /// This represents a binding between names and TermTypes.
@@ -26,10 +30,14 @@ pub fn type_check(term: &Term, env: &TyEnv) -> Result<TermType, String> {
             func_term: expr.clone(),
         }),
         Term::Apply { var_term, function } => match type_check(function, env)? {
-            TermType::Func { env: term_env, name, func_term } => {
+            TermType::Func {
+                env: term_env,
+                name,
+                func_term,
+            } => {
                 let var_type = type_check(var_term, env)?;
                 let mut env_prime = env.0.clone();
-                for (k,v) in term_env {
+                for (k, v) in term_env {
                     env_prime.insert(k, v);
                 }
                 env_prime.insert(name.clone(), var_type);
