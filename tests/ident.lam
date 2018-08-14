@@ -1,0 +1,6 @@
+a := (\ y . y);
+b := (\ x . x);
+c := b a;
+d := a false;
+e := c true;
+e != d;

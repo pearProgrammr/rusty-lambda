@@ -1,0 +1,3 @@
+Num(2)
+Closure { env: {"x": Num(5), "a": Closure { env: {}, name: "x", func_term: Lambda { var_name: "y", expr: MathOp { opr: Multiply, t1: Var("x"), t2: Var("y") } } }}, name: "y", func_term: MathOp { opr: Multiply, t1: Var("x"), t2: Var("y") } }
+Num(20)

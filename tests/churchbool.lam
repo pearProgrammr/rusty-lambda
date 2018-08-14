@@ -1,0 +1,30 @@
+cTrue := (\ a. (\ b. a));
+cFalse := (\ c. (\ d. d));
+cAnd := (\ p. (\ q. p q p));
+cOr := (\ p. (\ q. p p q));
+
+cOr1 := (cOr cTrue) cFalse;
+((cOr1 true) false);
+
+cOr2 := (cOr cFalse) cFalse;
+((cOr2 true) false) ;
+
+cOr3 := (cOr cTrue) cTrue;
+((cOr3 true) false);
+
+cOr4 := (cOr cFalse) cTrue;
+((cOr4 true) false);
+
+
+
+cAnd1 := (cAnd cTrue) cFalse;
+((cAnd1 true) false);
+
+cAnd2 := (cAnd cTrue) cTrue;
+((cAnd2 true) false);
+
+cAnd3 := (cAnd cFalse) cFalse;
+((cAnd3 true) false);
+
+cAnd4 := (cAnd cFalse) cFalse;
+((cAnd4 true) false);

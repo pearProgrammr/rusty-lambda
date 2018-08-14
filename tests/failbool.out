@@ -1,0 +1,1 @@
+Error: Custom { kind: InvalidInput, error: StringError("Logical binary operators require both parameters to be integers or booleans") }
